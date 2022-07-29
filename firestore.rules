@@ -1,0 +1,88 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+  
+  match /Users/{userId}{
+    allow create: if true;
+    allow read, update:if isAuthenticated();
+    }
+    
+    match /Doctors/{doctorId}{
+    allow read:if true;
+    //alllow create doctor if user is doctor and doctor id not set
+    allow create: if isAuthenticated() && get(/databases/$(database)/documents/Users/$(request.auth.uid)).data.role == 'doctor';
+    	match /balance {
+      allow read:if isAuthenticated() && get(/databases/$(database)/documents/Users/$(request.auth.uid)).data.role == 'doctor';
+      }
+    allow update:if get(/databases/$(database)/documents/Users/$(request.auth.uid)).data.doctorId == resource.id || isAdmin();
+    }
+  
+  	match /DoctorCategory/{categoryId}{
+    allow read: if isAuthenticated();
+    allow write: if isAdmin();
+    }
+    
+    match /DoctorTimeslot/{timeslotId}{
+    // allow create timeslot only role doctor
+    allow create: if isAuthenticated() && get(/databases/$(database)/documents/Users/$(request.auth.uid)).data.role == 'doctor';
+    allow read: if isAuthenticated();
+    allow update,delete: if get(/databases/$(database)/documents/Users/$(request.auth.uid)).data.doctorId == resource.data.doctorId;
+    }
+  
+    match /Order/{orderId}{
+    allow read,update: if isAuthenticated() && request.auth.uid == resource.data.userId || isAdmin();
+
+    }
+    match /WitdrawMethod/{withdrawId}{
+    allow read,create: if isAuthenticated() && get(/databases/$(database)/documents/Users/$(request.auth.uid)).data.role == 'doctor';
+    }
+    match /WithdrawRequest/{withdrawRequestId}{
+    allow read,create: if isAuthenticated() && get(/databases/$(database)/documents/Users/$(request.auth.uid)).data.role == 'doctor' || isAdmin();
+    allow update: if isAdmin();
+    }
+    match /Transaction/{transactionId}{
+    allow read,create: if isAuthenticated();
+    allow update: if isAdmin();
+    }
+    match /Review/{reviewId}{
+    allow read,create,update: if isAuthenticated();
+    }
+    match /Problem/{problemId}{
+    allow read,create,update: if isAuthenticated();
+    }
+    match /TopRatedDoctor/{topRatedDoctorsId}{
+    allow read : if isAuthenticated();
+    allow create, delete : if isAdmin();
+    }
+    
+    function isAuthenticated() {
+    	return request.auth != null;
+    }
+
+    function isAdmin() {
+      return request.auth.token.isAdmin == true;
+    }
+    match /Rooms/{roomId} {
+     allow read,write: if isAuthenticated();
+    }
+    match /RoomVideoCall/{roomIdVideoCall} {
+     allow read,write: if isAuthenticated();
+    }
+    
+    match /Rooms/{roomid}/messages/{messageId} {
+    allow read,write: if isAuthenticated();
+    }
+    
+    match /users/{userId} {
+      allow read,write : if true;
+  	}
+    match /Settings/{settingsId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+  	}
+    match /Settings/{name=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+  	}
+  }
+}
